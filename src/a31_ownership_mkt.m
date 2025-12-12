@@ -11,7 +11,8 @@ function vars = a31_ownership_mkt(psi, theta_o, targets, params)
 % vars.yh = yh;               % ownership-market transaction threshold
 % vars.xh = xh;               % moving threshold
 % vars.Sigma_i = Sigma_i;     % seller share of surplus when selling to investor
-%
+% vars.Sigma_h = Sigma_h;     
+
 %========================================================================%
 
 %% ----------------------------------------------------------
@@ -43,12 +44,22 @@ y_high = zeta_h + 1e6;   % large enough upper bound
 
 yh = fzero(@yh_eq, [y_low, y_high]); % solver for nonlinear eq
 
+pi_h = (params.zeta_h / yh)^params.lambda_h;
+Lambda_h_impl = 1 / pi_h;
+
+fprintf('A.3.1 diagnostic:\n');
+fprintf('  yh = %.4e\n', yh);
+fprintf('  pi_h = %.6e\n', pi_h);
+fprintf('  implied Lambda_h = %.2f (target %.2f)\n', ...
+        Lambda_h_impl, targets.Lambda_h);
+
+
 %% ----------------------------------------------------------
 % 3. Compute xh, pi_h, Sigma_h, Sigma_i, Uh
 %% ----------------------------------------------------------
 
-xh       = compute_xh(yh, psi, theta_o, targets, params, vo);
-Sigma_h  = compute_Sigma_h(yh, xh, targets, params, vo, theta_o);
+xh       = compute_xh(yh, psi, theta_o, targets, params);
+Sigma_h  = compute_Sigma_h(yh, xh, targets, params);
 Sigma_i  = Fi / ((1 - omega_star_i) * vo);
 
 Ey = delta * yh;  
@@ -62,23 +73,28 @@ vars = struct();
 vars.yh = yh;               % ownership-market transaction threshold
 vars.xh = xh;               % moving threshold
 vars.Sigma_i = Sigma_i;     % seller share of surplus when selling to investor
+vars.Sigma_h = Sigma_h;     
 vars.Uh      = Uh;          % the value of being a homeowner
 
 %% ----------------------------------------------------------
 % Nested: equation (A.53) for root-finding of yh
 %% ----------------------------------------------------------
-    function F = yh_eq(yh)
+   function F = yh_eq(yh)
 
-        xh = compute_xh(yh, psi, theta_o, targets, params, vo);
-        Sigma_h = compute_Sigma_h(yh, xh, targets, params, vo, theta_o);
-        Sigma_i = Fi / ((1 - omega_star_i) * vo);
+    % xh(yh)
+    xh = compute_xh(yh, psi, theta_o, targets, params);
 
-        % (A.53) LHS
-        LHS = xh + Fh ...
-            - (1 - omega_h + (1 - psi) * omega_h * theta_o) * vo * Sigma_h ...
-            - psi * theta_o * omega_star_i/(1 - omega_star_i) * Fi;
+    % Σ_h(yh,xh)
+    Sigma_h = compute_Sigma_h(yh, xh, targets, params);
 
-        F = LHS;
+    % Σ_i from free entry
+    Sigma_i = Fi / ((1 - omega_star_i) * vo);
+
+    % Equation (A.50)
+    F = (xh + Fh) ...
+        - (1 - omega_h + (1 - psi)*omega_h*theta_o) * vo * Sigma_h ...
+        - theta_o * vo * psi * omega_star_i * Sigma_i;
+
     end
 
 end % end main function
@@ -87,7 +103,7 @@ end % end main function
 % Helper: compute xh from (A.52)
 %==========================================================================
 
-function xh = compute_xh(yh, psi, theta_o, T, P, vo)
+function xh = compute_xh(yh, psi, theta_o, T, P)
 
     r = P.r; rho = P.rho; alpha_h = P.alpha_h;
 
@@ -116,7 +132,7 @@ end
 % Helper: compute Σ_h from (A.51)
 %==========================================================================
 
-function Sigma_h = compute_Sigma_h(yh, xh, targets, params, vo, theta_o)
+function Sigma_h = compute_Sigma_h(yh, xh, targets, params)
 
     r = params.r; rho = params.rho; alpha_h = params.alpha_h;
     lambda_h = params.lambda_h; delta_h = params.delta_h;
@@ -131,6 +147,6 @@ function Sigma_h = compute_Sigma_h(yh, xh, targets, params, vo, theta_o)
     term2 = alpha_h * delta_h^lambda_h * xh^(1 - lambda_h) / ...
         (r + rho + alpha_h * (1 - delta_h^lambda_h));
 
-    Sigma_h = coeff * vo * (term1 + term2);
+    Sigma_h = coeff * (term1 + term2);
 
 end

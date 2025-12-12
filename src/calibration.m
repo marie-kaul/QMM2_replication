@@ -18,7 +18,7 @@ clear; clc;
 % -------------------------------
 % Directly imposed targets
 % -------------------------------
-targets.n                  = 1;        % Equal numbers of households and properties in the city
+%targets.n                  = 1;        % Equal numbers of households and properties in the city
 targets.chi                = 1;        % Speed of adjustment of the city population
 targets.Bl                 = 0;        % No incentive for households to choose to leave the city
 

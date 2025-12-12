@@ -42,13 +42,42 @@ end
 % A.3.2 Ownership-market thresholds
 %% ----------------------------------------------------------
 
-vars_A32 = a32_ownership_other(yh,xh, psi, theta_o, targets, params);
+vars_A32 = a32_ownership_other(vars_A31, psi, theta_o, targets, params);
+
+diag_A3 = diagnostics_a31_a32(vars_A31, vars_A32, psi, theta_o, targets, params);
 
 %% ----------------------------------------------------------
 % A.3.3 The rental-market and credit-cost thresholds, 
 % and the city population
 %% ----------------------------------------------------------
 
-vars_A33 = a33_rental_credit_population(vars_A31, vars_A32, theta_o, ...
-    psi, targets, params);
+vars_A33 = a33_rental_credit_population1(vars_A31, vars_A32, ...
+    theta_o, psi, targets, params);
+
+%% ----------------------------------------------------------
+% A.3.4 Solving for the fraction of investors and market tightnesses
+%% ----------------------------------------------------------
+
+res = a34_eq_target(vars_A33,vars_A32, theta_o, psi, targets, params);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

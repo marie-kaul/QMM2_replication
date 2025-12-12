@@ -1,4 +1,4 @@
-function vars = a32_ownership_other(yh, xh, psi, theta_o, targets, params)
+function vars = a32_ownership_other(vars_A31, psi, theta_o, targets, params)
 
 %========================================================================%
 % Appendix A.3.2: Other ownership-market variables
@@ -11,7 +11,6 @@ function vars = a32_ownership_other(yh, xh, psi, theta_o, targets, params)
 %
 % Outputs:
 % vars.pi_h   = pi_h;         % Probability buyer finds acceptable match
-% vars.Sigma_h = Sigma_h;     % Surplus from matching in ownership market
 % vars.s_o     = s_o;         % Seller meeting rate
 % vars.m_h     = m_h;         % Moving hazard for homeowners
 % vars.q_h     = q_h;         % Owner-occupier stock
@@ -22,7 +21,7 @@ function vars = a32_ownership_other(yh, xh, psi, theta_o, targets, params)
 
 %========================================================================%
 
-%% Unpack parameters
+%% Unpack parameters and variables
 
 zeta_h   = params.zeta_h;
 lambda_h = params.lambda_h;
@@ -40,6 +39,10 @@ eta_o    = params.eta_o;
 
 tau_h    = targets.tau_h;
 
+yh       = vars_A31.yh;
+xh       = vars_A31.xh;
+Sigma_h  = vars_A31.Sigma_h;
+
 
 % Market tightness determines meeting rate
 vo = nu_o * theta_o^(-eta_o);
@@ -51,58 +54,78 @@ vo = nu_o * theta_o^(-eta_o);
 pi_h = (zeta_h / yh)^lambda_h;
 
 %% ----------------------------------------------------------
-% 2. Surplus term Σ_h(yh,xh) = (A.51)
-%% ----------------------------------------------------------
-
-coeff = zeta_h^lambda_h / ((1 + tau_h*omega_h) * (r + rho + alpha_h) * (lambda_h - 1));
-
-term1 = yh^(1 - lambda_h);
-term2 = alpha_h * delta_h^lambda_h * xh^(1 - lambda_h) / ...
-       (r + rho + alpha_h*(1 - delta_h^lambda_h));
-
-Sigma_h = coeff * vo * (term1 + term2);
-
-%% ----------------------------------------------------------
-% 3. Seller-side meeting rate s_o = θ_o v_o [ ψ + (1-ψ)π_h ]   (A.56)
+% 2. Seller-side meeting rate s_o = θ_o v_o [ ψ + (1-ψ)π_h ]   (A.56)
 %% ----------------------------------------------------------
 
 s_o = theta_o * vo * (psi + (1 - psi)*pi_h);
 
 %% ----------------------------------------------------------
-% 4. Buyer moving hazard m_h   (A.78)
+% 3. Buyer moving hazard m_h   (A.58)
 %% ----------------------------------------------------------
 
-m_h = alpha_h * (1 - (delta_h^(lambda_h) * (xh^(lambda_h - 1)) / (yh^(lambda_h - 1))));
+delta_lam = delta_h^lambda_h;
+ratio_lam = (yh / xh)^lambda_h;
+
+num = rho + alpha_h * (1 - delta_lam) ...
+      - rho * delta_lam * ratio_lam;
+
+den = rho + alpha_h * (1 - delta_lam) ...
+      + alpha_h * delta_lam * ratio_lam;
+
+m_h = alpha_h * (num / den);
 
 %% ----------------------------------------------------------
-% 5. Stocks from steady-state conditions (A.92)
+% 4. Stocks from steady-state conditions (A.56)–(A.59)
 %% ----------------------------------------------------------
 
-Tmh = targets.Tmh;
-Tbh = targets.Tbh;
-Tso = targets.Tso;
+% u_o from (A.59)
+u_o = 1 / ( ...
+      1 ...
+    + (1 - psi) * s_o / (m_h + rho) ...
+    + psi * s_o / params.rho_l );
 
-n    = targets.n;
-h    = targets.h;
-i_sh = targets.i_share;
+% q_h from (A.59)
+q_h = ((1 - psi) * s_o / (m_h + rho)) * u_o;
 
-% Owner-occupiers q_h
-q_h = n * h * Tmh / (Tmh + Tbh);
+% buyers
+b_h = (1 - psi) * theta_o * u_o;
+b_i = psi * theta_o * u_o;
 
-% Buyers b_h
-b_h = (Tbh / Tmh) * q_h;
 
-% Sellers u_o
-u_o = Tso * q_h / ((1 - i_sh) * (Tmh + Tbh));
+%% ----------------------------------------------------------
+% 5. Government revenue G from land transfer taxes 
+%% ----------------------------------------------------------
 
-% ----------------------------------------------------------
-% 6. Government revenue G from land transfer taxes (A.108)
-% ----------------------------------------------------------
+% Transaction shares
+i = psi / (psi + (1-psi)*pi_h);
 
-tau = targets.tau_i;     % same as tau_h in baseline calibration
-G   = tau * s_o * u_o;
+% Total sales flow
+S_total = s_o * u_o;
+S_h = (1 - i) * S_total;
+S_i = i * S_total;
 
-%% Pack results
+% Prices
+Sigma_i = vars_A31.Sigma_i; 
+
+Co = params.Co; D = params.D;
+
+% A.54
+Ph = ((r + theta_o*vo*(1-psi)*pi_h)/r) * (omega_h*Sigma_h/pi_h) ...
+     + (theta_o*vo*psi*omega_i*Sigma_i)/r ...
+     + Co - D/r;
+
+% A.55
+Pi = Co ...
+     + (theta_o*vo*((1-psi)*omega_h*Sigma_h + psi*omega_i*Sigma_i) - D)/r ...
+     + omega_i*Sigma_i;
+
+
+G = targets.tau_h * Ph * S_h + targets.tau_i * Pi * S_i;
+
+%% ----------------------------------------------------------
+% 6. Pack Results
+%% ----------------------------------------------------------
+
 vars = struct();
 vars.pi_h   = pi_h;         % Probability buyer finds acceptable match
 vars.Sigma_h = Sigma_h;     % Surplus from matching in ownership market
@@ -113,5 +136,7 @@ vars.b_h     = b_h;         % Buyer stock
 vars.u_o     = u_o;         % Seller stock
 vars.vo      = vo;          % Buyer meeting rate
 vars.G       = G;           % Government Revenue
+vars.b_i     = b_i;
+
 
 end
