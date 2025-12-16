@@ -49,7 +49,13 @@ mu   = params.mu;
 
 E     = params.E;
 
+% --- tax-adjusted bargaining powers ---
 tau_i = targets.tau_i;
+tau_h = targets.tau_h;
+
+omega_h_star = omega_h / (1 + tau_h * (1 - omega_h));
+omega_i_star = omega_i / (1 + tau_i * (1 - omega_i));
+
 
 %% ----------------------------------------------------------
 % Section: Rental-Market variables conditional on the transactions
@@ -65,15 +71,16 @@ Sigma_l = (pi_l * yl) / ((lambda_l - 1) * (r + rho + ml));
 % 3) Letting rate s_l implied by yl via (A.64)
 TERM1 = (1 + tau_i * (1 + rho_l/r)) ...
         * theta_o * vo ...
-        * ((1 - psi) * omega_h * Sigma_h + psi * omega_i * Sigma_i);
+        * ((1 - psi) * omega_h_star * Sigma_h + psi * omega_i_star * Sigma_i);
 
-TERM2 = (r + rho_l) * ((1 + tau_i) * Co + Ci + (1 + tau_i * omega_i) * Sigma_i);
+TERM2 = (r + rho_l) * ((1 + tau_i) * Co + Ci + (1 + tau_i * omega_i_star) * Sigma_i);
 
 TERM3 = - tau_i * (1 + rho_l/r) * D;
 
 RHS_A63 = TERM1 + TERM2 + TERM3;
 
 s_l = ((lambda_l - 1) * (r + rho + ml)) / (omega_l * yl) * RHS_A63;
+
 
 % 4) Rental market tightness theta_l from (A.65)
 theta_l = (s_l / (nu_l * pi_l))^(1 / (1 - eta_l));
@@ -139,20 +146,19 @@ end
 % helpful constant in (A.71)
 numA71 = (vo*pi_h + rho) * (1-psi) * theta_o * u_o - m_h*q_h;
 
-% lognormal conditional mean E[K | K<=Z] with κ = Φ((logZ-μ)/σ)
-Kbar_from_Z = @(Z,kap) exp(mu + 0.5*sigma^2) * ( ...
-    normcdf_noTB((log(Z) - mu - sigma^2)/sigma) / max(kap, realmin) );
-
-Z_from_kappa = @(kap) exp(mu + sigma * norminv_noTB(kap));
+Z_from_kappa  = @(kap) exp(mu + sigma * norminv_noTB(kap));
+Kbar_from_kap = @(kap) Kbar_from_kappa(Z_from_kappa(kap), kap, mu, sigma);
 
 n_from_kappa = @(kap) (1/rho) * ( (numA71 ./ max(kap, realmin)) - xi*ml*q_l );
 
 resA72 = @(kap) ...
-    (G ./ n_from_kappa(kap)) ...
-  - Fl ...
-  + (1 - omega_l) * v_l * Sigma_l / (r + rho) ...
-  + kap * ( Z_from_kappa(kap) - Kbar_from_Z(Z_from_kappa(kap), kap) ) ...
+    ( (G ./ n_from_kappa(kap)) ...
+    - Fl ...
+    + (1 - omega_l) * v_l * Sigma_l ) / (r + rho) ...
+  + kap * ( Z_from_kappa(kap) - Kbar_from_kap(kap) ) ...
   - E;
+
+
 
 % ----------------------------------------------------------
 % Root-find κ in [0,1] using sign change of (A.72)
@@ -176,9 +182,9 @@ end
 % ----------------------------------------------------------
 % Back out Z, Kbar, n
 % ----------------------------------------------------------
-Z    = Z_from_kappa(kappa);              % (A.73) :contentReference[oaicite:2]{index=2}
-Kbar = Kbar_from_kappa(Z, kappa, mu, sigma);        % from (42) as described in appendix 
-n    = n_from_kappa(kappa);              % (A.71) :contentReference[oaicite:4]{index=4}
+Z    = Z_from_kappa(kappa);     % (A.73)
+Kbar = Kbar_from_kappa(Z, kappa, mu, sigma);   % (42) truncated mean
+n    = n_from_kappa(kappa);     % (A.71)
 
 %% ----------------------------------------------------------
 % Section: Solving for the transaction threshold yl

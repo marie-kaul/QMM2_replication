@@ -31,13 +31,16 @@ alpha_h  = params.alpha_h;
 r        = params.r;
 rho      = params.rho;
 
+tau_h    = targets.tau_h;
+
 omega_h  = params.omega_h;
 omega_i  = params.omega_i;
 
+omega_h_star = omega_h / (1 + tau_h * (1 - omega_h));
+omega_i_star = omega_i / (1 + targets.tau_i * (1 - omega_i));
+
 nu_o     = params.nu_o;
 eta_o    = params.eta_o;
-
-tau_h    = targets.tau_h;
 
 yh       = vars_A31.yh;
 xh       = vars_A31.xh;
@@ -110,14 +113,14 @@ Sigma_i = vars_A31.Sigma_i;
 Co = params.Co; D = params.D;
 
 % A.54
-Ph = ((r + theta_o*vo*(1-psi)*pi_h)/r) * (omega_h*Sigma_h/pi_h) ...
-     + (theta_o*vo*psi*omega_i*Sigma_i)/r ...
+Ph = ((r + theta_o*vo*(1-psi)*pi_h)/r) * (omega_h_star*Sigma_h/pi_h) ...
+     + (theta_o*vo*psi*omega_i_star*Sigma_i)/r ...
      + Co - D/r;
 
 % A.55
 Pi = Co ...
-     + (theta_o*vo*((1-psi)*omega_h*Sigma_h + psi*omega_i*Sigma_i) - D)/r ...
-     + omega_i*Sigma_i;
+     + (theta_o*vo*((1-psi)*omega_h_star*Sigma_h + psi*omega_i_star*Sigma_i) - D)/r ...
+     + omega_i_star*Sigma_i;
 
 
 G = targets.tau_h * Ph * S_h + targets.tau_i * Pi * S_i;

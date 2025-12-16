@@ -2,83 +2,51 @@ function res = a34_eq_target(vars_A33, vars_A32, theta_o, psi, targets, params)
 
 %========================================================================%
 % A.3.4 Solving for psi and theta_o
-%
-% Inputs:
-%   x(1) = psi        : fraction of investors among buyers
-%   x(2) = theta_o    : ownership-market tightness
-%
-%   vars   : struct with variables from A.3.1–A.3.3
-%   params : struct with parameters
-%
-% Output:
-%   res(1) : residual of equation (A.35)
-%   res(2) : residual of equation (A.74)
+% Residuals:
+%   (1) (A.35) relationship between market tightnesses across markets
+%   (2) (A.74) marginal home-buyer indifference condition
 %========================================================================%
 
-%% ----------------------------------------------------------
-% 0a. Unpack parameters
-% ----------------------------------------------------------
-
+%% Parameters
 r       = params.r;
 rho     = params.rho;
-
 Fh      = params.Fh;
 Fl      = params.Fl;
 
 omega_h = params.omega_h;
 omega_l = params.omega_l;
 
-%% ----------------------------------------------------------
-% 0b. Unpack variables from previous sections
-% ----------------------------------------------------------
+% tax-adjusted omega_h* (Appendix A.3 / A.74)
+tau_h = targets.tau_h;
+omega_h_star = omega_h / (1 + tau_h * (1 - omega_h));
 
-% Market tightness & meeting rates
+%% Variables from previous blocks
 theta_l = vars_A33.theta_l;
+
 vo      = vars_A32.vo;
 vl      = vars_A33.v_l;
 
-% Surpluses
 Sigma_h = vars_A32.Sigma_h;
 Sigma_l = vars_A33.Sigma_l;
 
-% Thresholds
 Z       = vars_A33.Z;
 
-% Housing stocks on the market
 u_o     = vars_A32.u_o;
 u_l     = vars_A33.u_l;
 
-n = vars_A33.n;
+n       = vars_A33.n;
 
-%% ----------------------------------------------------------
-% 1. Equation (A.35): population / flow balance
-% ----------------------------------------------------------
+%% (A.35): tightness relationship
+res_A35 = (((1 - psi) * theta_o - 1) * u_o) ...
+        + ((theta_l - 1) * u_l) ...
+        - (n - 1);
 
-% Buyers in ownership and rental markets
-buyers_o = vo * theta_o * u_o;
-buyers_l = vl * theta_l * u_l;
+%% (A.74): marginal buyer indifference
+res_A74 = ( (1 - omega_h_star) * vo * Sigma_h ...
+          - (1 - omega_l)      * vl * Sigma_l ) ...
+        - ( (r + rho) * Z + Fh - Fl );
 
-% Fraction psi of buyers are investors
-lhs_A35 = psi * buyers_o + (1 - psi) * buyers_l;
-
-% Total population
-rhs_A35 = n;
-
-res_A35 = lhs_A35 - rhs_A35;
-
-%% ----------------------------------------------------------
-% 2. Equation (A.74): marginal buyer indifference
-% ----------------------------------------------------------
-lhs_A74 = (1 - omega_h) * vo * Sigma_h ...
-        - (1 - omega_l) * vl * Sigma_l;
-
-rhs_A74 = (r + rho) * Z + Fh - Fl;
-
-res_A74 = lhs_A74 - rhs_A74;
-
-%% ----------------------------------------------------------
-% 6. Collect residuals
-% ----------------------------------------------------------
+%% Collect residuals
 res = [res_A35; res_A74];
 
 end

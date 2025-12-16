@@ -13,6 +13,14 @@ function vars = a33_rental_credit_population1(vars_A31, vars_A32, ...
 
 zeta_l   = params.zeta_l;
 
+%========================================================================%
+% Appendix A.3.3:
+% Solve for rental transaction threshold y_l via bisection.
+% Given y_l, yl_residual() solves for κ (and hence Z, Kbar, n, θ_l, etc.)
+%========================================================================%
+
+zeta_l = params.zeta_l;
+
 %% ----------------------------------------------------------
 % 1) Lower bound near zeta_l + existence/uniqueness check
 %% ----------------------------------------------------------
